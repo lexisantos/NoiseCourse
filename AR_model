@@ -1,0 +1,42 @@
+%pip install sktime seaborn statsmodels;
+
+import matplotlib.pyplot as plt
+import seaborn 
+import datetime
+import pandas as pd
+import statsmodels
+import numpy as np
+
+url = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_mm_mlo.csv"
+
+# change for your uploaded URL
+df = pd.read_csv(url, comment='#')
+df['date'] = pd.to_datetime(dict(year=df.year, month=df.month, day=1))
+df = df[['date', 'average']]
+df = df.set_index(df['date']).drop('date', axis=1)
+
+df = df.resample("MS").last() #Month Start interval, to use in library
+
+df.describe().T
+
+#%% Check stationarity and variance - ADF Test
+
+from statsmodels.tsa.stattools import adfuller, kpps
+adf_result = adfuller(df)
+kpss_result = kpss(df)
+
+print('ADF Test:', adf_result[1], '\n', 'KPPS Test', kpss_result[1])
+
+
+from sktime.transformations.series.difference import Differencer
+transformer = Differencer(lags=1) # xt - 1 as lagged value
+df['average'] = transformer.fit_transform(df['average'])
+
+from statsmodels.tsa.seasonal import seasonal_decompose
+result = seasonal_decompose(df, model='additive')
+result.plot()
+pyplot.show()
+
+from statsmodels.tsa.ar_model import ar_select_order
+select = ar_select_order(train, 36, "aic", trend="ct", seasonal=True)
+print(select.ar_lags) # show all selected lags
